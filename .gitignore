@@ -1,0 +1,15 @@
+# colcon build artifacts
+build/
+install/
+log/
+
+# nested upstream git metadata (renamed from .git so packages are vendored)
+.git_upstream/
+
+# python
+__pycache__/
+*.pyc
+
+# editors
+.vscode/
+*.swp
