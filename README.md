@@ -12,7 +12,8 @@ Copied from `~/f1tenth_ws` on 2026-09-28; the original workspace is untouched.
 | `f1tenth_system/vesc/*` | `vesc_driver` (serial to VESC), `vesc_ackermann` (Ackermann -> ERPM/servo, VESC state -> `/odom`) |
 | `f1tenth_system/ackermann_mux` | Priority mux: `/teleop` (joystick, prio 100) beats `/drive` (autonomy, prio 10) |
 | `f1tenth_system/teleop_tools` | `joy_teleop` (deadman on L1 for manual driving) |
-| `particle_filter` | MCL localisation on a saved map (range_libc GPU). Publishes `/pf/pose/odom`, `map -> laser` TF |
+| `particle_filter` | MCL localisation on a saved map (range_libc GPU). Publishes `/pf/pose/odom`, `map -> laser` TF. Holds the maps (`maps/`). Fallback only: it loses track on the current track |
+| `slam_localization` | Default localisation: slam_toolbox localisation on the saved pose graph, auto start pose, smoothed pose republished on `/pf/pose/odom` (same format as the particle filter) |
 | `slam_toolbox` | Source copy, **COLCON_IGNORE'd**: the system package (`/opt/ros/foxy`, same version 2.4.1) is used. Delete `src/slam_toolbox/COLCON_IGNORE` to build from source instead. |
 | `pure_pursuit` | Reference-path consumer: loads a CSV raceline (x, y, v in `map` frame) and publishes `/waypoints` markers. Proves the car can hold a global path. |
 | `safety_node` | Optional automatic emergency brake on `/scan` + `/odom`, publishes stop on `/drive` |
@@ -34,10 +35,12 @@ external VLA  --AckermannDriveStamped-->  /drive
 
 ## Localisation
 
-1. Map once: `ros2 launch slam_toolbox online_async_launch.py params_file:=<f1tenth_stack>/config/f1tenth_online_async.yaml`, then save the map into `src/particle_filter/maps/`.
-2. Localise: set `map` in `src/particle_filter/config/localize.yaml`, then `ros2 launch particle_filter localize_launch.py`.
+1. Map once: slam_toolbox mapping with the stock config plus a static `base_link -> base_footprint`
+   transform, then save the map image and the pose graph into `src/particle_filter/maps/`.
+   Current map: `track_20260930` (description, recorded drives and logs in [`data/README.md`](data/README.md)).
+2. Localise: car in the start box, `ros2 launch slam_localization localize_launch.py`.
 
-Full step-by-step procedure for the car (preflight checks, mapping lap, saving, particle filter test):
+Full step-by-step procedure for the car (preflight checks, mapping lap, saving, localisation):
 [`docs/mapping_localization_runbook.md`](docs/mapping_localization_runbook.md).
 
 ## Global path
@@ -54,7 +57,7 @@ The bundled racelines are from an older track; new ones for the 1:10 cs3 replica
 ```
 source /opt/ros/foxy/setup.bash && source ~/vla_ws/install/setup.bash
 ros2 launch f1tenth_stack bringup_launch.py        # VESC, LiDAR, mux, joystick
-ros2 launch particle_filter localize_launch.py     # map server + particle filter
+ros2 launch slam_localization localize_launch.py   # car in the start box; pose on /pf/pose/odom
 ros2 launch pure_pursuit pure_pursuit_launch.py    # optional: waypoints + rviz
 ```
 
