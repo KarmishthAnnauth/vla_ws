@@ -51,6 +51,7 @@ and `waypoint_visualiser_node` publishes them as a MarkerArray on `/waypoints` *
 `alpamayo-autoware/src/simlingo_f1tenth`). Only `waypoint_visualiser_node` is needed for that;
 `pure_pursuit_node` must NOT run alongside the external planner (both publish `/drive`).
 The bundled racelines are from an older track; new ones for the 1:10 cs3 replica are still to be recorded.
+How to record them, the CSV format and why the route is only the target-point source (the car drives the model's prediction): [`docs/record_global_routes.md`](docs/record_global_routes.md).
 
 ## Launch order
 
