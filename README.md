@@ -37,6 +37,9 @@ external VLA  --AckermannDriveStamped-->  /drive
 1. Map once: `ros2 launch slam_toolbox online_async_launch.py params_file:=<f1tenth_stack>/config/f1tenth_online_async.yaml`, then save the map into `src/particle_filter/maps/`.
 2. Localise: set `map` in `src/particle_filter/config/localize.yaml`, then `ros2 launch particle_filter localize_launch.py`.
 
+Full step-by-step procedure for the car (preflight checks, mapping lap, saving, particle filter test):
+[`docs/mapping_localization_runbook.md`](docs/mapping_localization_runbook.md).
+
 ## Global path
 
 `pure_pursuit` reads `waypoints_path` (CSV: `x,y,velocity`, map frame) from `src/pure_pursuit/config/config.yaml`
