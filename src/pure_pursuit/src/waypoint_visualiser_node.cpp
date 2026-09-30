@@ -12,6 +12,8 @@
 #include "rclcpp/rclcpp.hpp"
 #include "visualization_msgs/msg/marker.hpp"
 #include "visualization_msgs/msg/marker_array.hpp"
+#include "nav_msgs/msg/path.hpp"
+#include "geometry_msgs/msg/pose_stamped.hpp"
 #include <geometry_msgs/msg/transform_stamped.hpp>
 
 //other macros
@@ -29,11 +31,19 @@ public:
     {
         this->declare_parameter("waypoints_path", "/sim_ws/src/pure_pursuit/racelines/e7_floor5.csv");
         this->declare_parameter("rviz_waypoints_topic", "/waypoints");
+        // nav_msgs/Path copy of the same waypoints for an external planner
+        // (the SimLingo node on the Orin). Latched (transient local) so a
+        // subscriber that starts later, or reconnects over the network, still
+        // receives it; also re-sent on the timer.
+        this->declare_parameter("global_path_topic", "/global_path");
 
         waypoints_path = this->get_parameter("waypoints_path").as_string();
         rviz_waypoints_topic = this->get_parameter("rviz_waypoints_topic").as_string();
+        global_path_topic = this->get_parameter("global_path_topic").as_string();
 
         vis_path_pub = this->create_publisher<visualization_msgs::msg::MarkerArray>(rviz_waypoints_topic, 1000);
+        auto latched = rclcpp::QoS(rclcpp::KeepLast(1)).reliable().transient_local();
+        global_path_pub = this->create_publisher<nav_msgs::msg::Path>(global_path_topic, latched);
         timer_ = this->create_wall_timer(2000ms, std::bind(&WaypointVisualiser::timer_callback, this));
 
         RCLCPP_INFO (this->get_logger(), "this node has been launched");
@@ -51,6 +61,7 @@ public:
     //topic names
     std::string waypoints_path;
     std::string rviz_waypoints_topic;
+    std::string global_path_topic;
     
     //file object
     std::fstream csvFile_waypoints; 
@@ -60,6 +71,7 @@ public:
 
     //Publisher initialisation
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr vis_path_pub; 
+    rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr global_path_pub;
 
     //Timer initialisation
     rclcpp::TimerBase::SharedPtr timer_;
@@ -132,8 +144,29 @@ public:
         vis_path_pub->publish(marker_array);
     }
 
+    void publish_global_path() {
+        auto path = nav_msgs::msg::Path();
+        path.header.frame_id = "map";
+        path.header.stamp = rclcpp::Clock().now();
+        for (unsigned int i = 0; i < waypoints.X.size(); ++i) {
+            geometry_msgs::msg::PoseStamped ps;
+            ps.header = path.header;
+            ps.pose.position.x = waypoints.X[i];
+            ps.pose.position.y = waypoints.Y[i];
+            // heading towards the next waypoint (last one repeats the previous)
+            unsigned int j = (i + 1 < waypoints.X.size()) ? i + 1 : i;
+            unsigned int k = (j == i && i > 0) ? i - 1 : i;
+            double yaw = std::atan2(waypoints.Y[j] - waypoints.Y[k], waypoints.X[j] - waypoints.X[k]);
+            ps.pose.orientation.z = std::sin(yaw / 2.0);
+            ps.pose.orientation.w = std::cos(yaw / 2.0);
+            path.poses.push_back(ps);
+        }
+        global_path_pub->publish(path);
+    }
+
     void timer_callback () {
         visualize_points();
+        publish_global_path();
     }
     
 

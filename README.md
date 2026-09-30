@@ -40,8 +40,11 @@ external VLA  --AckermannDriveStamped-->  /drive
 ## Global path
 
 `pure_pursuit` reads `waypoints_path` (CSV: `x,y,velocity`, map frame) from `src/pure_pursuit/config/config.yaml`
-and `waypoint_visualiser_node` publishes them as a MarkerArray on `/waypoints`.
-A `nav_msgs/Path` publisher for the external planner is NOT implemented yet.
+and `waypoint_visualiser_node` publishes them as a MarkerArray on `/waypoints` **and** as a latched
+`nav_msgs/Path` on `/global_path` (2026-09-28) for the external planner (SimLingo on the Orin,
+`alpamayo-autoware/src/simlingo_f1tenth`). Only `waypoint_visualiser_node` is needed for that;
+`pure_pursuit_node` must NOT run alongside the external planner (both publish `/drive`).
+The bundled racelines are from an older track; new ones for the 1:10 cs3 replica are still to be recorded.
 
 ## Launch order
 

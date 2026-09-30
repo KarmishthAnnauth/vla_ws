@@ -47,7 +47,7 @@ ament_target_dependencies(pure_pursuit_node
 add_executable(waypoint_visualiser_node src/waypoint_visualiser_node.cpp)
 
 ament_target_dependencies(waypoint_visualiser_node 
-  rclcpp geometry_msgs std_msgs visualization_msgs eigen3_cmake_module Eigen3
+  rclcpp geometry_msgs nav_msgs std_msgs visualization_msgs eigen3_cmake_module Eigen3
 )
 
 # Install Cpp executables
