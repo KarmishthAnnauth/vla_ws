@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>orion_f1tenth</name>
+  <version>0.1.0</version>
+  <description>
+    Real-world ORION deployment on an F1TENTH car: one camera on the Jetson AGX Orin
+    feeding ORION's six camera slots (front three from the camera, rear three black),
+    pose / speed / global path from the F1TENTH stack on the Jetson Nano, ORION
+    inference on the Orin with the orion_ros speedups (fast / int8 profiles), and
+    simlingo_f1tenth's trajectory controller driving the Nano's /drive topic.
+  </description>
+  <maintainer email="user@example.com">user</maintainer>
+  <license>Apache License 2.0</license>
+
+  <buildtool_depend>ament_python</buildtool_depend>
+
+  <depend>rclpy</depend>
+  <depend>autoware_planning_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>visualization_msgs</depend>
+  <!-- route_planner (frames, target points, CSV routes), camera_node, trajectory_controller_node -->
+  <depend>simlingo_f1tenth</depend>
+  <!-- orion_speedups: the post-build inference speedups -->
+  <depend>orion_ros</depend>
+  <depend>python3-numpy</depend>
+  <depend>python3-opencv</depend>
+
+  <test_depend>ament_pytest</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

@@ -13,14 +13,72 @@ Files live in `src/particle_filter/maps/` (installed with `particle_filter`):
 | `track_20260930.pgm` | occupancy image, 298 x 200 px (about 15 x 10 m): black = wall, white = free, grey = unknown |
 | `track_20260930.png` | preview of the same image |
 | `track_20260930.posegraph`, `.data` | slam_toolbox pose graph; required by `slam_localization` |
+| `track_20260930_lanelet2.osm` | the Lanelet2 road map of the track (`testtrack_base.osm` in the repo root) moved into the `map` frame, see below |
+| `track_20260930_lanelet2.png` | overlay of that road map, the occupancy map and the recorded drives, to check the alignment by eye |
+| `track_20260930_lanelet2_alignment.yaml` | the fitted pose of the OSM frame in `map` and the fit statistics |
+| `track_20260930_clean.pgm`, `.yaml`, `.png` | cleaned copy of the map (track area only, straight walls and boxes, no stray points), see below. The original stays the default |
+| `track_20260930_clean_lanelet2.png` | the road map on the cleaned map |
 
 - Built with slam_toolbox online async mapping (stock `mapper_params_online_async.yaml`, `base_frame:
   base_footprint`, plus a static `base_link -> base_footprint` identity transform), two laps.
 - The map origin (0, 0, 0) is the `base_link` pose when bringup was started for mapping, with the
   car in the start box facing along the top straight (+x).
 - Pixel `(col, row)` to map: `x = -3.04 + (col + 0.5) * 0.05`, `y = -8.78 + (200 - row - 0.5) * 0.05`.
-- The track edges are sparse markers (dotted lines in the map); the room walls, the two boxes
-  inside the track and the clutter below the track carry most of the localisation information.
+- The lane markings are flat and not in the map. The dotted lines along the driven path are not
+  track markers: of the 155 occupied cells within 25 cm of the path, 3 were seen again in the
+  recorded drives, so they are most likely the person walking with the car during mapping. The
+  room walls, the two boxes, the posts on the islands and the clutter below the track carry the
+  localisation information.
+
+## Lanelet2 map in the `map` frame
+
+`testtrack_base.osm` (JOSM, 74 lanelets, lat/lon near 0/0 that are metres on a sphere) is the
+road layout of the 1:10 track. The LiDAR map does not see the lane markings, so the two were
+aligned by `scripts/align_osm_to_map.py` from the recorded drives instead:
+
+1. every scan of the five bags is re-matched against the occupancy map (the recorded localiser
+   poses are only the start values);
+2. cells hit in at least 4 of the 5 drives are static (walls, boxes, the posts on the islands)
+   and must not lie on a lanelet; the driven paths must lie on the road;
+3. rotation and translation (no scale) are fitted with a robust loss.
+
+Result: the OSM's x axis points along `map` −x (yaw 181.8°, the track is parallel to the room
+walls, which are at ~1.5° in the map), the OSM's bounding-box centre is at (5.60, −2.70) m, the
+map origin (start box) sits at the east end of the two-way road at the bottom of the OSM, on the
+lane divider (the +x lane, lanelet -99777, spans y = −0.42..−0.07 there). Shifting the result by 5 cm or rotating it by 0.5° already puts static objects on the
+road, so the alignment is good to roughly ±5 cm; a mirrored layout fits 12x worse. The OSM ends
+0.3 m east of the map origin, so the U-turn the laps drove around the left box is outside it.
+
+In `track_20260930_lanelet2.osm` every node has `local_x` / `local_y` tags (metres in `map`);
+lat/lon hold the same coordinates as degrees on a sphere of radius 6378137 m, i.e. they read as
+map metres in JOSM. Element IDs, ways and lanelet relations are unchanged, so edits can be made in
+JOSM and re-applied with `--alignment track_20260930_lanelet2_alignment.yaml` (no ROS needed).
+The roads are two-way with right-hand traffic (region `de`). The recorded laps did not keep to
+that: along the top straight they run 10–20 cm left of the divider, in the −x lane, and only
+about half of the driven path is on a lanelet whose direction of travel matches. No shift of the
+alignment can change this (one lane further up puts the road into the wall), so routes for the
+car should be generated from the lanelets, not from the recorded laps.
+
+## Cleaned map: `track_20260930_clean`
+
+Same size, resolution and origin as `track_20260930`, so the `map` frame and the aligned road map
+are unchanged. Made by `scripts/clean_map.py` (the region polygon is recorded in the yaml):
+
+- only the track area (the room's north-east part, drawn by hand on the overlay) is kept; the
+  rest of the room is unknown;
+- the three room walls and the two boxes are replaced by straight 1-cell lines and rectangles
+  fitted to the cells that all five recorded drives saw (the walls are at ~1.5° in the map, so
+  a 1-cell line steps every ~2 m; that is the raster, not a gap);
+- small objects stay only if the drives saw them every time (the posts on the islands); the
+  dots left by the person walking with the car are gone. The clutter on the region's south edge
+  around x = 7.4 m is real and stays;
+- everything else inside the region is free space; the insides of the boxes stay unknown.
+
+It only affects consumers of the `.pgm`: the particle filter (`map:` in
+`src/particle_filter/config/localize.yaml`, then rebuild `particle_filter`) and anything that
+plans on the grid. `slam_localization` localises on the pose graph and does not read it.
+Untested on the car; if the particle filter does worse on it than on the original, the missing
+clutter south of the track (which the LiDAR still sees) is the first suspect.
 
 ## Frames and topics in the bags
 

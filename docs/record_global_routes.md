@@ -1,7 +1,7 @@
 # Recording global routes for SimLingo
 
 A global route is the list of map-frame waypoints from which the SimLingo bridge
-(`alpamayo-autoware/src/simlingo_f1tenth` on the Orin) picks the model's two
+(`vla_ws/src/simlingo_f1tenth` on the Orin) picks the model's two
 **target points**. It is *not* what the car drives: SimLingo predicts its own
 trajectory from the camera image, the speed and those two points, and
 `trajectory_controller_node` (in the bridge package) follows *that* prediction

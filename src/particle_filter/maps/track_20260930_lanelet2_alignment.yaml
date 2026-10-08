@@ -1,0 +1,23 @@
+# map = R(yaw) * (osm - osm_centre) + centre_in_map, all in metres;
+# osm = (lon, lat) in radians * 6378137. Written by scripts/align_osm_to_map.py.
+osm: testtrack_base.osm
+map: track_20260930.yaml
+yaw_deg: 181.81712
+osm_centre:
+- -121.9867
+- -1115.1426
+centre_in_map:
+- 5.604381
+- -2.696783
+bags:
+- lap_134654
+- sl_lap_143220
+- sl_lap_145833
+- sl_man_150210
+- sl_smooth_151045
+fit:
+  static_cells: 1918
+  static_cells_on_road: 10
+  path_points: 2018
+  path_points_off_road: 17
+  path_points_near_edge: 43
