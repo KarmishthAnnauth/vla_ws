@@ -21,7 +21,7 @@ Copied from `~/f1tenth_ws` on 2026-09-28; the original workspace is untouched.
 ## System Architecture
 
 
-```
+
 
 ## Localisation
 
