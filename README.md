@@ -1,8 +1,6 @@
 # vla_ws
 
-Minimal ROS 2 Foxy workspace for driving the F1TENTH car from externally
-generated `AckermannDriveStamped` commands (arriving over the ZeroTier network).
-Copied from `~/f1tenth_ws` on 2026-09-28; the original workspace is untouched.
+A ROS2 Foxy F1tenth side + ROS2 Humble for running VLA models on an F1Tenth vehicle. 
 
 ## Packages
 
