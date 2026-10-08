@@ -1,7 +1,12 @@
 # colcon build artifacts
 build/
 install/
+
+# logs: colcon logs and run logs (log/simlingo, log/orion: route logs,
+# tegrastats, saved frames), plus stray log files anywhere
 log/
+*.log
+*.log.*
 
 # nested upstream git metadata (renamed from .git so packages are vendored)
 .git_upstream/
