@@ -60,6 +60,17 @@ ros2 launch pure_pursuit pure_pursuit_launch.py    # optional: waypoints + rviz
 
 ## Running SimLingo along a recorded route (from the Orin)
 
+Model weights: `MODELS_HOST` (default `/media/orin-vlm/Intenso/SimLingo/simlingo_hf`); the InternVL2 cache must be in `../simlingo/pretrained/InternVL2-1B/`.
+
+```bash
+export MODELS_HOST=/path/to/simlingo_hf
+```
+
+```bash
+docker pull karmishthannauth/simlingo:humble-cyclonedd
+../simlingo/start_orin_f1tenth.sh --setup   # creates the container, builds the workspace
+```
+
 ```
 scripts/run_simlingo_route.sh        # lists the routes on the car, asks for the number
 scripts/run_simlingo_route.sh 1      # route_1.csv; --dry keeps the car e-stopped, --help for the rest
@@ -67,6 +78,17 @@ scripts/run_simlingo_route.sh 1 --think   # thinking mode: the model writes a co
 ```
 
 ## Running ORION along a recorded route (from the Orin)
+
+Model weights (`Orion.pth` + `pretrain_qformer/`): `ORION_WEIGHTS_HOST` (default: first of `/media/orin-vlm/Intenso/Orin`, `/media/orin-vlm/KINGSTON/models/Orion`).
+
+```bash
+export ORION_WEIGHTS_HOST=/path/to/Orion
+```
+
+```bash
+docker pull karmishthannauth/orion_env_ros:v01
+../start_orion_f1tenth.sh --setup           # creates the container, builds the workspace
+```
 
 ```
 scripts/run_orion_route.sh 1          # route_1.csv, fast inference (~1.0 s per frame)
