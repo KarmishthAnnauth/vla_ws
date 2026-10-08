@@ -18,19 +18,9 @@ Copied from `~/f1tenth_ws` on 2026-09-28; the original workspace is untouched.
 | `pure_pursuit` | Reference-path consumer: loads a CSV raceline (x, y, v in `map` frame) and publishes `/waypoints` markers. Proves the car can hold a global path. |
 | `safety_node` | Optional automatic emergency brake on `/scan` + `/odom`, publishes stop on `/drive` |
 
-## Command path (external source -> wheels)
+## System Architecture
 
-```
-external VLA  --AckermannDriveStamped-->  /drive
-                                            |  ackermann_mux (nav prio 10, timeout 0.2 s)
-                                            v
-                                     /ackermann_drive
-                                            |  ackermann_to_vesc_node (vesc.yaml gains)
-                                            v
-                 /commands/motor/speed  +  /commands/servo/position
-                                            |  vesc_driver_node (/dev/sensors/vesc)
-                                            v
-                                          VESC
+
 ```
 
 ## Localisation
