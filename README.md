@@ -20,8 +20,7 @@ Copied from `~/f1tenth_ws` on 2026-09-28; the original workspace is untouched.
 
 ## System Architecture
 
-
-
+![System architecture](<Screenshot 2026-10-08 at 10.54.53.png>)
 
 ## Localisation
 
