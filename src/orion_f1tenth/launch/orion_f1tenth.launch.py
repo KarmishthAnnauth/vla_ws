@@ -59,7 +59,7 @@ def generate_launch_description() -> LaunchDescription:
                               default_value="/root/Orion/adzoo/orion/configs/orion_stage3_agent.py"),
         DeclareLaunchArgument("orion_checkpoint_path", default_value="/models/Orion/Orion.pth"),
         DeclareLaunchArgument("llm_int8_stats",
-                              default_value="/benchmarking/alpamayo-autoware/src/orion_ros/engines/llm_act_stats.pt"),
+                              default_value="/benchmarking/vla_ws/deps/orion_ros/engines/llm_act_stats.pt"),
         DeclareLaunchArgument("profile_stages", default_value="false"),
         DeclareLaunchArgument("pipeline_prep", default_value="true"),
         DeclareLaunchArgument("timestamp_mode", default_value="sensor"),

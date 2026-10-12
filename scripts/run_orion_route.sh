@@ -3,7 +3,7 @@
 # run_orion_route.sh — run ORION on the real F1TENTH along one recorded global route.
 #
 # The ORION counterpart of run_simlingo_route.sh: same car side (scripts/simlingo_car.sh),
-# same routes, same e-stop flow; a different container (benchmarking/start_orion_f1tenth.sh)
+# same routes, same e-stop flow; a different container (scripts/start_orion_f1tenth.sh)
 # and launch (vla_ws/src/orion_f1tenth).
 #
 # Start it on the Orin, car in the start box:
@@ -18,7 +18,7 @@
 #
 # What it does:
 #   1. copies the route CSVs from the car (~/vla_ws/routes) to vla_ws/routes here;
-#   2. prepares the Orin container (benchmarking/start_orion_f1tenth.sh --setup);
+#   2. prepares the Orin container (scripts/start_orion_f1tenth.sh --setup);
 #   3. starts bringup + a fresh localisation on the car (scripts/simlingo_car.sh over ssh);
 #   4. launches camera, ORION and the trajectory controller in the container with the
 #      route as route_csv. The controller starts E-STOPPED: the model runs on the live
@@ -77,7 +77,7 @@ NAME=orion_f1tenth
 VLA_WS=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 BENCH=$(dirname "$VLA_WS")                 # mounted at /benchmarking in the container
 CTR_WS=/benchmarking/$(basename "$VLA_WS")
-START_ORIN="$BENCH/start_orion_f1tenth.sh"
+START_ORIN="$VLA_WS/scripts/start_orion_f1tenth.sh"
 ROUTES="$VLA_WS/routes"
 LOGDIR="$VLA_WS/log/orion"
 CYCLONE_XML="$LOGDIR/cyclone_orin.xml"
@@ -189,13 +189,13 @@ ZT_IFACE=$IFACE NANO_IP=$CAR_IP DOMAIN=$DOMAIN CYCLONE_XML=$CYCLONE_XML CAMERA_D
 [ -e "$CAMERA_DEV" ] || die "no camera at $CAMERA_DEV"
 # The install is a copy, not a symlink: pick up edits to the bridge packages (5 s).
 docker exec "$NAME" bash -c "source /opt/ros/humble/setup.bash;
-    cd /benchmarking/alpamayo-autoware &&
-    colcon build --base-paths src /benchmarking/alpamayo-autoware/ackermann_msgs \
-      /benchmarking/vla_ws/src/simlingo_f1tenth /benchmarking/vla_ws/src/orion_f1tenth \
+    cd $CTR_WS &&
+    colcon build --base-paths deps/autoware_msgs deps/ackermann_msgs deps/carla_msgs deps/simlingo_ros deps/orion_ros \
+      src/simlingo_f1tenth src/orion_f1tenth \
       --packages-select orion_f1tenth simlingo_f1tenth --build-base $OF_WS/build --install-base $OF_WS/install" >/dev/null 2>&1 \
   || die "colcon build of orion_f1tenth / simlingo_f1tenth failed"
 # leftovers of an earlier run would fight over the camera and /drive
-docker exec "$NAME" bash -c 'pkill -INT -f "ros2 launch orion_f1tent[h]"; pkill -f "simlingo_esto[p].py"; sleep 1;
+docker exec "$NAME" bash -c 'pkill -INT -f "ros2 launch orion_f1tent[h]"; pkill -f "simlingo_esto[p].py"; pkill -f "record_run_trajector[y].py"; sleep 1;
                              pkill -KILL -f "lib/orion_f1tent[h]/"; pkill -KILL -f "lib/simlingo_f1tent[h]/"; true'
 ok "bridge packages up to date, no earlier launch running"
 
@@ -254,6 +254,7 @@ if [ "$SAVE_FRAMES" = 1 ]; then
   mkdir -p "$FRAMES_DIR"     # owned by this user; the node gives every frame the same owner
 fi
 FIFO="$LOGDIR/.estop_fifo.$$"
+TRAJ="${RUNLOG%.log}_traj.csv"          # driven path, for scripts/eval_route_tracking.py
 LAUNCHED=0
 NOISE='warnings\.warn|UserWarning|FutureWarning|^\[orion_realworld_node-[0-9]+\] (- |\. Make sure)'
 
@@ -281,6 +282,11 @@ else:
         print(f"  period between forwards mean {sum(per) / len(per):.0f} ms, min {min(per)}, max {max(per)}")
 PY
   grep "\[PROF\]" "$RUNLOG" | tail -1 | sed 's/.*\[PROF\]/  node total, /'
+  if [ -s "$TRAJ" ]; then
+    echo "  Route tracking (all runs: $LOGDIR/route_tracking.csv)"
+    python3 "$VLA_WS/scripts/eval_route_tracking.py" --plot --csv "$LOGDIR/route_tracking.csv" "$TRAJ" 2>/dev/null \
+      | sed '1d; s/^/  /'
+  fi
 }
 
 cleanup() {
@@ -290,7 +296,7 @@ cleanup() {
     echo stop >&9 2>/dev/null
     docker exec "$NAME" bash -c 'pkill -INT -f "ros2 launch orion_f1tent[h]"
         for i in $(seq 32); do pgrep -f "lib/orion_f1tent[h]/" >/dev/null || break; sleep 0.25; done
-        pkill -KILL -f "lib/orion_f1tent[h]/"; pkill -KILL -f "lib/simlingo_f1tent[h]/"; pkill -f "simlingo_esto[p].py"; true'
+        pkill -KILL -f "lib/orion_f1tent[h]/"; pkill -KILL -f "lib/simlingo_f1tent[h]/"; pkill -f "simlingo_esto[p].py"; pkill -INT -f "record_run_trajector[y].py"; true'
     exec 9>&-
     wait 2>/dev/null
     summary
@@ -314,9 +320,13 @@ LAUNCHED=1
 ( tegrastats --interval 1000 | python3 -c "$SYNC_TEE" "$MEMLOG" quiet ) </dev/null >/dev/null 2>&1 &
 TEGRA_PID=$!
 docker exec -i "${DDS_ENV[@]}" "$NAME" bash -c "$ENVSETUP exec python3 -u $CTR_WS/scripts/simlingo_estop.py $ESTOP_TOPIC" <&9 >/dev/null 2>&1 &
+: > "$TRAJ"        # created here so it keeps this user as owner; the recorder runs as root
+docker exec "${DDS_ENV[@]}" "$NAME" bash -c "$ENVSETUP exec python3 -u $CTR_WS/scripts/record_run_trajectory.py \
+    --out $CTR_WS/${LOGDIR#$VLA_WS/}/$(basename "$TRAJ") --route-csv $CTR_WS/routes/route_$ROUTE_N.csv \
+    --estop-topic $ESTOP_TOPIC" </dev/null >/dev/null 2>&1 &
 docker exec "${DDS_ENV[@]}" "$NAME" bash -c "$ENVSETUP
   exec ros2 launch orion_f1tenth orion_f1tenth.launch.py \
-    inference_mode:=$INFER camera_device:=$CAMERA_DEV \
+    inference_mode:=$INFER camera_device:=$CAMERA_DEV llm_int8_stats:=$CTR_WS/deps/orion_ros/engines/llm_act_stats.pt \
     route_csv:=$CTR_WS/routes/route_$ROUTE_N.csv max_speed_mps:=$SPEED start_estopped:=true estop_topic:=$ESTOP_TOPIC \
     speed_world_scale:=$FACTOR min_speed_mps:=$MIN_SPEED steer_smoothing_sec:=$STEER_SMOOTH \
     $CMD_ARGS camera_hfov_deg:=$HFOV side_views:=$SIDE \

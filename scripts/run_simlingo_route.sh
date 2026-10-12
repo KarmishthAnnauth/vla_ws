@@ -214,7 +214,7 @@ docker exec "$NAME" bash -c "source /opt/ros/humble/setup.bash; source /opt/ros_
       --packages-select simlingo_f1tenth --build-base $F1_WS/build --install-base $F1_WS/install" >/dev/null 2>&1 \
   || die "colcon build of simlingo_f1tenth failed"
 # leftovers of an earlier run would fight over the camera and /drive
-docker exec "$NAME" bash -c 'pkill -INT -f "ros2 launch simlingo_f1tent[h]"; pkill -f "simlingo_esto[p].py"; sleep 1;
+docker exec "$NAME" bash -c 'pkill -INT -f "ros2 launch simlingo_f1tent[h]"; pkill -f "simlingo_esto[p].py"; pkill -f "record_run_trajector[y].py"; sleep 1;
                              pkill -KILL -f "lib/simlingo_f1tent[h]/"; true'
 ok "bridge package up to date, no earlier launch running"
 
@@ -261,6 +261,7 @@ if [ "$SAVE_FRAMES" = 1 ]; then
   mkdir -p "$FRAMES_DIR"     # owned by this user; the node gives every frame the same owner
 fi
 FIFO="$LOGDIR/.estop_fifo.$$"
+TRAJ="${RUNLOG%.log}_traj.csv"          # driven path, for scripts/eval_route_tracking.py
 LAUNCHED=0
 NOISE='language: Waypoints:$|huggingface\.co|^\[simlingo_realworld_node-[0-9]+\] (- |\. Make sure)|Axes3D|warnings\.warn'
 
@@ -281,6 +282,11 @@ else:
           f"min {min(used)}, max {max(used)}{note}")
 PY
   grep "\[PROF\]" "$RUNLOG" | tail -1 | sed 's/.*\[PROF\]/  node total, /'
+  if [ -s "$TRAJ" ]; then
+    echo "  Route tracking (all runs: $LOGDIR/route_tracking.csv)"
+    python3 "$VLA_WS/scripts/eval_route_tracking.py" --plot --csv "$LOGDIR/route_tracking.csv" "$TRAJ" 2>/dev/null \
+      | sed '1d; s/^/  /'
+  fi
 }
 
 cleanup() {
@@ -290,7 +296,7 @@ cleanup() {
     echo stop >&9 2>/dev/null
     docker exec "$NAME" bash -c 'pkill -INT -f "ros2 launch simlingo_f1tent[h]"
         for i in $(seq 32); do pgrep -f "lib/simlingo_f1tent[h]/" >/dev/null || break; sleep 0.25; done
-        pkill -KILL -f "lib/simlingo_f1tent[h]/"; pkill -f "simlingo_esto[p].py"; true'
+        pkill -KILL -f "lib/simlingo_f1tent[h]/"; pkill -f "simlingo_esto[p].py"; pkill -INT -f "record_run_trajector[y].py"; true'
     exec 9>&-
     wait 2>/dev/null
     summary
@@ -310,6 +316,10 @@ step "Launch: route $ROUTE_N, model speed / $FACTOR, commanded speed $MIN_SPEED-
 mkfifo "$FIFO" && exec 9<>"$FIFO" || die "could not create $FIFO"
 LAUNCHED=1
 docker exec -i "${DDS_ENV[@]}" "$NAME" bash -c "$ENVSETUP exec python3 -u $CTR_WS/scripts/simlingo_estop.py" <&9 >/dev/null 2>&1 &
+: > "$TRAJ"        # created here so it keeps this user as owner; the recorder runs as root
+docker exec "${DDS_ENV[@]}" "$NAME" bash -c "$ENVSETUP exec python3 -u $CTR_WS/scripts/record_run_trajectory.py \
+    --out $CTR_WS/${LOGDIR#$VLA_WS/}/$(basename "$TRAJ") --route-csv $CTR_WS/routes/route_$ROUTE_N.csv \
+    --estop-topic /simlingo/estop" </dev/null >/dev/null 2>&1 &
 docker exec "${DDS_ENV[@]}" "$NAME" bash -c "$ENVSETUP
   exec ros2 launch simlingo_f1tenth simlingo_f1tenth.launch.py \
     checkpoint_path:=$CKPT simlingo_path:=/benchmarking/simlingo camera_device:=$CAMERA_DEV \

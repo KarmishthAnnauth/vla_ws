@@ -87,10 +87,10 @@ move the car; then prefer the controller's `min_speed_mps`.
 ## Running
 
 ```bash
-# Orin: benchmarking/start_orion_f1tenth.sh does all of this (container, weights, build, clocks)
-./start_orion_f1tenth.sh                       # fast
-./start_orion_f1tenth.sh --int8                # quantised LLM
-./start_orion_f1tenth.sh --fast camera_hfov_deg:=110.0   # crop a 110° camera to the model's 70°
+# Orin: vla_ws/scripts/start_orion_f1tenth.sh does all of this (container, weights, build, clocks)
+scripts/start_orion_f1tenth.sh                       # fast
+scripts/start_orion_f1tenth.sh --int8                # quantised LLM
+scripts/start_orion_f1tenth.sh --fast camera_hfov_deg:=110.0   # crop a 110° camera to the model's 70°
 
 # no camera / no car yet: exercise the pipeline (the model still loads)
 ros2 launch orion_f1tenth orion_f1tenth.launch.py camera_source:=synthetic route_csv:=/path/route.csv

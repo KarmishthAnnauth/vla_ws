@@ -99,7 +99,7 @@ class OrionRealWorldNode(Node):
         # baseline | eager | fast | int8 | lite  (orion_model.SPEED_PROFILES)
         self.declare_parameter("inference_mode", "fast")
         self.declare_parameter("llm_int8_stats",
-                               "/benchmarking/alpamayo-autoware/src/orion_ros/engines/llm_act_stats.pt")
+                               "/benchmarking/vla_ws/deps/orion_ros/engines/llm_act_stats.pt")
         self.declare_parameter("decode_workers", 6)
         self.declare_parameter("profile_stages", False)
         self.declare_parameter("inference_period_sec", 0.05)     # dispatch check; the model sets the pace
